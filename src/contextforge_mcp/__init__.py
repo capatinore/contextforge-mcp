@@ -1,3 +1,3 @@
-"""contextforge-mcp — MCP orchestrator for codebase-memory-mcp + headroom + Spec Kit."""
+"""contextforge-mcp — MCP compression middleware for codebase-memory-mcp + Spec Kit."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

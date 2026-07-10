@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .compressor import HeadroomCompressor
 
 
 def _specs_dir(base: str = ".") -> Path:
@@ -33,7 +36,12 @@ def _read(feature_dir: Path, filename: str) -> str | None:
     return path.read_text(encoding="utf-8") if path.exists() else None
 
 
-async def read_and_compress(compressor: Any, feature_id: str | None, artifact: str, base: str = ".") -> str:
+async def read_and_compress(
+    compressor: "HeadroomCompressor",
+    feature_id: str | None,
+    artifact: str,
+    base: str = ".",
+) -> str:
     specs = _specs_dir(base)
     feat = _feature_dir(feature_id, specs)
 
@@ -51,16 +59,20 @@ async def read_and_compress(compressor: Any, feature_id: str | None, artifact: s
             "available": [f.name for f in feat.iterdir() if f.is_file()],
         })
 
-    compressed = await compressor.compress_tool_result(f"speckit_{artifact}", content, force=True)
+    result = await compressor.compress(content, f"speckit_{artifact}", force=True)
     header = (
         f"[ContextForge: {artifact} — "
-        f"{compressed.original_tokens}→{compressed.compressed_tokens} tokens "
-        f"({compressed.ratio:.0%} saved) | {feat.name}]\n\n"
+        f"{result.original_tokens}→{result.compressed_tokens} tokens "
+        f"({result.ratio:.0%} saved) | {feat.name}]\n\n"
     )
-    return header + compressed.content
+    return header + result.content
 
 
-async def implement_context(compressor: Any, feature_id: str | None, base: str = ".") -> str:
+async def implement_context(
+    compressor: "HeadroomCompressor",
+    feature_id: str | None,
+    base: str = ".",
+) -> str:
     specs = _specs_dir(base)
     feat = _feature_dir(feature_id, specs)
 
@@ -75,7 +87,7 @@ async def implement_context(compressor: Any, feature_id: str | None, base: str =
         content = _read(feat, artifact)
         if content is None:
             continue
-        r = await compressor.compress_tool_result(f"speckit_{artifact}", content, force=True)
+        r = await compressor.compress(content, f"speckit_{artifact}", force=True)
         total_orig += r.original_tokens
         total_comp += r.compressed_tokens
         sections.append(f"## {artifact}\n\n{r.content}")
@@ -102,12 +114,9 @@ async def status(base: str = ".") -> dict[str, Any]:
             continue
         files = {f.name for f in feat.iterdir() if f.is_file()}
         phase = "empty"
-        if "spec.md" in files:
-            phase = "specified"
-        if "plan.md" in files:
-            phase = "planned"
-        if "tasks.md" in files:
-            phase = "tasked"
+        if "spec.md" in files: phase = "specified"
+        if "plan.md" in files: phase = "planned"
+        if "tasks.md" in files: phase = "tasked"
 
         tasks_done = tasks_total = 0
         tasks_content = _read(feat, "tasks.md")

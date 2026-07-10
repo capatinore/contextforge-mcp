@@ -1,29 +1,29 @@
 # contextforge-mcp
 
-**MCP orchestrator combining [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) + [headroom](https://github.com/headroomlabs-ai/headroom) + [Spec Kit](https://github.com/github/spec-kit) into a single pipeline.**
+**MCP compression middleware** that connects [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) + [headroom](https://github.com/headroomlabs-ai/headroom) + [Spec Kit](https://github.com/github/spec-kit) into a unified, token-efficient workflow.
+
+## Architecture
 
 ```
-Agent (Claude Code / Cursor / Codex)
-  │
-  ▼
-contextforge-mcp  ←── single MCP server
-  │
-  ├── codebase-memory-mcp  (knowledge graph: 99% fewer retrieval tokens)
-  ├── headroom             (compression: 60–95% fewer prompt tokens)
-  └── Spec Kit             (SDD workflow: spec → plan → tasks → implement)
+Claude Code
+  ├── codebase-memory-mcp   ← graph queries (cbm_* tools)
+  │         │
+  │         └── large result
+  │                   │
+  └── contextforge-mcp  ← YOU ARE HERE
+            │
+            cf_compress_cbm(result, tool_name)
+            │
+            └── compressed result (60-95% fewer tokens)
 ```
 
----
+**ContextForge does NOT proxy codebase-memory-mcp** — both servers run independently. The agent calls CBM for graph queries, then passes results through ContextForge for compression. This design is reliable, cross-platform, and works with any MCP client.
 
 ## Install
 
 ```bash
-# Prerequisites
 npm install -g codebase-memory-mcp
 pip install "headroom-ai[all]"
-pip install spec-kit
-
-# Install contextforge-mcp
 pip install contextforge-mcp
 ```
 
@@ -33,65 +33,76 @@ pip install contextforge-mcp
 # Health check
 contextforge-mcp doctor
 
-# Configure Claude Code (writes .mcp.json)
+# Configure Claude Code (writes .mcp.json with both servers)
 contextforge-mcp install --target claude
-
-# Configure Spec Kit extension
-contextforge-mcp install --target speckit
-
-# Both at once
-contextforge-mcp install --target all
 ```
 
-## Usage in Claude Code
+## Workflow
 
-```
-# 1. Index the codebase (once per session)
-cbm_index_repository(repo_path=".")
+```python
+# 1. Query the graph (via codebase-memory-mcp)
+result = cbm_search_graph(name_pattern=".*Payment.*", label="Function")
 
-# 2. Query the graph (instead of grep/read)
-cbm_search_graph(name_pattern=".*Payment.*")
-cbm_trace_path(function_name="processPayment")
-cbm_get_architecture()
+# 2. Compress the result (via contextforge-mcp)
+compressed = cf_compress_cbm(result=result, tool_name="search_graph")
+# → [ContextForge ✓ search_graph: 8420→612 tokens (93% saved in 45ms)]
 
-# 3. Check token savings
+# 3. Use compressed result in your context
+# 4. Check savings
 cf_stats()
 ```
 
-## Spec Kit workflow
+## Tools (9 total)
 
+### Compression
+| Tool | Description |
+|------|-------------|
+| `cf_compress_cbm(result, tool_name)` | Compress CBM tool output |
+| `cf_compress(text, hint)` | Compress arbitrary text |
+
+### Stats
+| Tool | Description |
+|------|-------------|
+| `cf_stats()` | Session token savings + cost estimate |
+| `cf_reset_stats()` | Reset session counters |
+
+### Spec Kit
+| Tool | Description |
+|------|-------------|
+| `cf_read_spec(feature_id)` | Compressed spec.md |
+| `cf_read_plan(feature_id)` | Compressed plan.md |
+| `cf_read_tasks(feature_id)` | Compressed tasks.md |
+| `cf_read_artifact(artifact, feature_id)` | Any artifact |
+| `cf_implement_context(feature_id)` | Full bundle (spec+plan+tasks) |
+| `cf_speckit_status()` | List all features + phase |
+
+## Supported CBM tool names for cf_compress_cbm
+
+`search_graph` · `search_code` · `get_architecture` · `find_dead_code` · `find_similar_code` · `get_impact` · `trace_path` · `trace_call_path` · `cypher_query` · `get_cross_service_links` · `get_node_details`
+
+## Add to CLAUDE.md
+
+```markdown
+## ContextForge MCP — Compression Workflow
+
+After EVERY codebase-memory-mcp tool call that returns a large result,
+immediately call cf_compress_cbm(result, tool_name) to compress it.
+
+| CBM Query | Then compress with |
+|-----------|-------------------|
+| cbm_search_graph(…) | cf_compress_cbm(result, "search_graph") |
+| cbm_get_architecture() | cf_compress_cbm(result, "get_architecture") |
+| cbm_search_code(…) | cf_compress_cbm(result, "search_code") |
+| cbm_trace_path(…) | cf_compress_cbm(result, "trace_path") |
+| cbm_get_impact(…) | cf_compress_cbm(result, "get_impact") |
+
+Call cf_stats() at end of session to measure total savings.
 ```
-/speckit.constitution
-/speckit.specify
-/speckit.cf-analyze      ← analyze codebase before planning
-/speckit.plan
-/speckit.tasks
-/speckit.cf-index        ← index before implementing
-/speckit.cf-implement    ← graph-aware implementation
-/speckit.cf-stats        ← token savings report
-```
-
-## Tools (23 total)
-
-| Prefix | Count | Description |
-|--------|-------|-------------|
-| `cbm_*` | 14 | codebase-memory-mcp graph tools |
-| `cf_*` | 9 | ContextForge meta + Spec Kit tools |
-
-## Environment variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CBM_BINARY_PATH` | auto | Path to codebase-memory-mcp binary |
-| `CF_MODEL` | `claude-sonnet-4-6` | Model hint for headroom |
-| `CF_LOG_LEVEL` | `WARNING` | Log level |
 
 ## Credits
-
 - [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) — MIT
 - [headroom](https://github.com/headroomlabs-ai/headroom) — Apache 2.0
 - [spec-kit](https://github.com/github/spec-kit) — MIT
 
 ## License
-
 MIT

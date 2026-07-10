@@ -9,11 +9,8 @@ import pytest
 
 from contextforge_mcp.compressor import HeadroomCompressor
 from contextforge_mcp.speckit import (
-    _feature_dir,
-    _specs_dir,
-    read_and_compress,
-    implement_context,
-    status,
+    _specs_dir, _feature_dir,
+    read_and_compress, implement_context, status,
 )
 
 
@@ -22,13 +19,13 @@ def project(tmp_path) -> Path:
     specs = tmp_path / "specs"
     f1 = specs / "001-map-view"
     f1.mkdir(parents=True)
-    (f1 / "spec.md").write_text("# Map View\n\nAdd a map.\n")
-    (f1 / "plan.md").write_text("# Plan\n\nUse Google Maps.\n")
-    (f1 / "tasks.md").write_text("# Tasks\n\n- [x] Install lib\n- [ ] Add markers\n")
-    (f1 / "context.md").write_text("# Context\n\nGraph analysis.\n")
+    (f1 / "spec.md").write_text("# Map View\n\nAdd a map to property listings.\n")
+    (f1 / "plan.md").write_text("# Plan\n\nUse Google Maps API.\n")
+    (f1 / "tasks.md").write_text("# Tasks\n\n- [x] Install lib\n- [ ] Add markers\n- [ ] Navigation\n")
+    (f1 / "context.md").write_text("# Context\n\nRelevant graph nodes found.\n")
     f2 = specs / "002-payments"
     f2.mkdir(parents=True)
-    (f2 / "spec.md").write_text("# Payments\n\nWompi.\n")
+    (f2 / "spec.md").write_text("# Payments\n\nWompi integration.\n")
     return tmp_path
 
 
@@ -52,7 +49,7 @@ class TestFeatureDir:
         specs = _specs_dir(str(project))
         assert _feature_dir(None, specs) is not None
 
-    def test_not_found_returns_none(self, project):
+    def test_not_found(self, project):
         specs = _specs_dir(str(project))
         assert _feature_dir("999", specs) is None
 
@@ -63,11 +60,6 @@ class TestReadAndCompress:
         result = await read_and_compress(compressor, "001", "spec.md", base=str(project))
         assert "Map View" in result
         assert "ContextForge:" in result
-
-    @pytest.mark.asyncio
-    async def test_reads_tasks(self, project, compressor):
-        result = await read_and_compress(compressor, "001", "tasks.md", base=str(project))
-        assert "Tasks" in result
 
     @pytest.mark.asyncio
     async def test_error_missing_feature(self, project, compressor):
@@ -82,18 +74,19 @@ class TestReadAndCompress:
         assert "available" in data
 
     @pytest.mark.asyncio
-    async def test_error_no_specs_dir(self, tmp_path, compressor):
+    async def test_no_specs_dir(self, tmp_path, compressor):
         result = await read_and_compress(compressor, None, "spec.md", base=str(tmp_path))
         assert "error" in json.loads(result)
 
 
 class TestImplementContext:
     @pytest.mark.asyncio
-    async def test_bundles_artifacts(self, project, compressor):
+    async def test_bundles_all_artifacts(self, project, compressor):
         result = await implement_context(compressor, "001", base=str(project))
         assert "spec.md" in result
         assert "plan.md" in result
         assert "tasks.md" in result
+        assert "context.md" in result
 
     @pytest.mark.asyncio
     async def test_shows_savings(self, project, compressor):
@@ -101,9 +94,16 @@ class TestImplementContext:
         assert "saved" in result
 
     @pytest.mark.asyncio
-    async def test_error_no_feature(self, project, compressor):
+    async def test_feature_not_found(self, project, compressor):
         result = await implement_context(compressor, "999", base=str(project))
         assert "error" in json.loads(result)
+
+    @pytest.mark.asyncio
+    async def test_partial_artifacts(self, project, compressor):
+        """Feature 002 only has spec.md — should still work."""
+        result = await implement_context(compressor, "002", base=str(project))
+        assert "spec.md" in result
+        assert "plan.md" not in result
 
 
 class TestStatus:
@@ -124,10 +124,11 @@ class TestStatus:
     async def test_counts_tasks(self, project):
         s = await status(base=str(project))
         f = next(x for x in s["features"] if x["id"] == "001-map-view")
-        assert f["tasks"]["total"] == 2
+        assert f["tasks"]["total"] == 3
         assert f["tasks"]["done"] == 1
 
     @pytest.mark.asyncio
     async def test_no_specs_dir(self, tmp_path):
         s = await status(base=str(tmp_path))
         assert s["exists"] is False
+        assert s["features"] == []
