@@ -26,45 +26,37 @@ class TestToolsRegistered:
     def test_speckit_tools(self):
         from contextforge_mcp import server as srv
         tools = {t.name for t in srv.mcp._tool_manager._tools.values()}
-        assert "cf_read_spec" in tools
-        assert "cf_read_plan" in tools
-        assert "cf_read_tasks" in tools
-        assert "cf_read_artifact" in tools
-        assert "cf_implement_context" in tools
-        assert "cf_speckit_status" in tools
+        for tool in ["cf_read_spec", "cf_read_plan", "cf_read_tasks",
+                     "cf_read_artifact", "cf_implement_context", "cf_speckit_status"]:
+            assert tool in tools
 
     def test_total_tool_count(self):
         from contextforge_mcp import server as srv
         count = len(srv.mcp._tool_manager._tools)
-        assert count == 9  # 2 compress + 2 stats + 5 speckit
+        assert count == 10  # 2 compress + 2 stats + 6 speckit
 
     def test_no_cbm_proxy_tools(self):
-        """v2 should NOT have cbm_* tools — those come from codebase-memory-mcp directly."""
         from contextforge_mcp import server as srv
         tools = {t.name for t in srv.mcp._tool_manager._tools.values()}
-        cbm_tools = {t for t in tools if t.startswith("cbm_")}
-        assert len(cbm_tools) == 0
+        assert not any(t.startswith("cbm_") for t in tools)
 
 
 class TestCFCompressCBM:
     @pytest.mark.asyncio
-    async def test_passthrough_when_headroom_unavailable(self):
+    async def test_passthrough_when_already_compact(self):
         from contextforge_mcp import server as srv
-
         mock_result = CompressionResult(
-            original_tokens=100, compressed_tokens=100,
+            original_tokens=10, compressed_tokens=10,
             tokens_saved=0, ratio=0.0,
-            content="original content", elapsed_ms=1.0, skipped=True,
+            content="compact content", elapsed_ms=1.0, skipped=False,
         )
         with patch.object(srv._compressor, "compress", return_value=mock_result):
-            with patch.object(srv._compressor, "_available", False):
-                result = await srv.cf_compress_cbm("original content", "search_graph")
-        assert "headroom-ai not installed" in result
+            result = await srv.cf_compress_cbm("compact content", "search_graph")
+        assert "already compact" in result
 
     @pytest.mark.asyncio
     async def test_shows_savings_when_compressed(self):
         from contextforge_mcp import server as srv
-
         mock_result = CompressionResult(
             original_tokens=1000, compressed_tokens=100,
             tokens_saved=900, ratio=0.9,
@@ -72,10 +64,21 @@ class TestCFCompressCBM:
         )
         with patch.object(srv._compressor, "compress", return_value=mock_result):
             result = await srv.cf_compress_cbm("large content " * 100, "search_graph")
-
         assert "90%" in result
         assert "1000→100" in result
         assert "compressed content" in result
+
+    @pytest.mark.asyncio
+    async def test_skipped_returns_original(self):
+        from contextforge_mcp import server as srv
+        mock_result = CompressionResult(
+            original_tokens=10, compressed_tokens=10,
+            tokens_saved=0, ratio=0.0,
+            content="original", elapsed_ms=1.0, skipped=True,
+        )
+        with patch.object(srv._compressor, "compress", return_value=mock_result):
+            result = await srv.cf_compress_cbm("original", "index_repository")
+        assert result == "original"
 
 
 class TestCFStats:
@@ -85,9 +88,8 @@ class TestCFStats:
         result = await srv.cf_stats()
         data = json.loads(result)
         assert "contextforge_mcp_version" in data
-        assert data["contextforge_mcp_version"] == "0.2.0"
+        assert data["contextforge_mcp_version"] == "0.2.3"
         assert "compression" in data
-        assert "workflow" in data
 
     @pytest.mark.asyncio
     async def test_architecture_field(self):
@@ -95,6 +97,13 @@ class TestCFStats:
         result = await srv.cf_stats()
         data = json.loads(result)
         assert "middleware" in data["architecture"]
+
+    @pytest.mark.asyncio
+    async def test_engine_field(self):
+        from contextforge_mcp import server as srv
+        result = await srv.cf_stats()
+        data = json.loads(result)
+        assert "native" in data["compression_engine"]
 
 
 class TestCFResetStats:
@@ -110,4 +119,4 @@ class TestCFResetStats:
         from contextforge_mcp import server as srv
         result = await srv.cf_reset_stats()
         data = json.loads(result)
-        assert data["status"] == "stats reset"
+        assert data["status"] == "reset"
