@@ -37,12 +37,22 @@ class CBMClient:
                 "codebase-memory-mcp binary not found. "
                 "Install with: npm install -g codebase-memory-mcp"
             )
-        self._process = await asyncio.create_subprocess_exec(
-            self.binary_path,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
+        import sys
+        use_shell = sys.platform == "win32" and self.binary_path.upper().endswith(".CMD")
+        if use_shell:
+            self._process = await asyncio.create_subprocess_shell(
+                f'"{self.binary_path}"',
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        else:
+            self._process = await asyncio.create_subprocess_exec(
+                self.binary_path,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
         await self._initialize()
 
     async def stop(self) -> None:
