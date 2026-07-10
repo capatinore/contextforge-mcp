@@ -21,8 +21,16 @@ ARCH_RESULT = {
 
 class TestHelpers:
     def test_count_tokens(self):
-        assert _count_tokens("hello world foo") == 3
+        # Character-based: len(text) // 4
         assert _count_tokens("") == 0
+        assert _count_tokens("hello world foo") == 3  # 15 chars // 4 = 3
+        assert _count_tokens('{"id":"fn_1"}') == 3    # 13 chars // 4 = 3
+
+    def test_count_tokens_compact_json(self):
+        """Compact JSON has no spaces — whitespace splitting would give 1 token."""
+        long_json = '{"nodes":[' + ','.join(['{"id":"fn_1","name":"func"}'] * 10) + ']}'
+        tokens = _count_tokens(long_json)
+        assert tokens > 10, f"Expected >10 tokens for long JSON, got {tokens}"
 
     def test_is_json_dict(self):
         assert _is_json('{"key": "value"}')

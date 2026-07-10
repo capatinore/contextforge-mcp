@@ -109,8 +109,19 @@ class SessionStats:
 # ── Core compression functions ────────────────────────────────────────────────
 
 def _count_tokens(text: str) -> int:
-    """Fast token approximation via whitespace/punctuation splitting."""
-    return len(re.findall(r'\S+', text))
+    """
+    Approximate LLM token count using character-based estimation.
+
+    LLM tokenizers average ~4 characters per token for mixed content
+    (code, JSON, prose). Whitespace splitting is inaccurate for compact
+    JSON which has no spaces — the entire payload would count as 1 token.
+
+    4 chars/token is a standard approximation used by OpenAI, Anthropic,
+    and most tokenizer benchmarks for English + code content.
+    """
+    if not text:
+        return 0
+    return max(1, len(text) // 4)
 
 
 def _is_json(text: str) -> bool:

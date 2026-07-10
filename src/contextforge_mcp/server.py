@@ -136,7 +136,7 @@ async def cf_stats() -> str:
     """
     stats = _compressor.get_stats()
     return json.dumps({
-        "contextforge_mcp_version": "0.2.2",
+        "contextforge_mcp_version": "0.2.3",
         "architecture":    "middleware — works alongside codebase-memory-mcp",
         "compression_engine": "native pure-Python (cross-platform, no ML)",
         "workflow":        "cbm_tool() → cf_compress_cbm(result, tool_name) → use compressed",
