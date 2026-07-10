@@ -29,6 +29,8 @@ _NOISE_KEYS: frozenset[str] = frozenset({
     "hash", "checksum", "uuid", "timestamp", "created_at", "updated_at",
     "internal_id", "raw", "metadata", "debug", "trace", "span_id",
     "correlation_id", "request_id", "etag", "last_modified",
+    # CBM-specific fingerprint fields (opaque hashes, no informational value)
+    "fp", "sp", "bt", "fingerprint", "signature", "embedding",
 })
 
 # Per-tool: max array items to keep after deduplication

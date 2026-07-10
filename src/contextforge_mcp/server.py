@@ -136,7 +136,7 @@ async def cf_stats() -> str:
     """
     stats = _compressor.get_stats()
     return json.dumps({
-        "contextforge_mcp_version": "0.2.3",
+        "contextforge_mcp_version": "0.2.4",
         "architecture":    "middleware — works alongside codebase-memory-mcp",
         "compression_engine": "native pure-Python (cross-platform, no ML)",
         "workflow":        "cbm_tool() → cf_compress_cbm(result, tool_name) → use compressed",
@@ -226,3 +226,13 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# debug tool - remover antes de release
+@mcp.tool()
+async def cf_debug_size(text: str) -> str:
+    """Debug: measure actual size of content received."""
+    import json as _json
+    tokens = len(text.split())
+    chars = len(text)
+    is_json = text.strip().startswith(('{','['))
+    return _json.dumps({"received_tokens": tokens, "received_chars": chars, "is_json": is_json, "preview": text[:100]})

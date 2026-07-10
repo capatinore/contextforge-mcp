@@ -88,7 +88,7 @@ class TestCFStats:
         result = await srv.cf_stats()
         data = json.loads(result)
         assert "contextforge_mcp_version" in data
-        assert data["contextforge_mcp_version"] == "0.2.3"
+        assert data["contextforge_mcp_version"] == "0.2.4"
         assert "compression" in data
 
     @pytest.mark.asyncio
