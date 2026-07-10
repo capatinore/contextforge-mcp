@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "contextforge-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "MCP orchestrator: codebase-memory-mcp + headroom + Spec Kit"
 readme = "README.md"
 license = { text = "MIT" }
