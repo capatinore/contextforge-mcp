@@ -1,0 +1,16 @@
+{
+  "name": "contextforge-mcp",
+  "version": "0.1.0",
+  "description": "Integrates contextforge-mcp (codebase-memory-mcp + headroom) into Spec Kit — adds code intelligence and context compression to the SDD workflow.",
+  "author": "Camilo Patiño",
+  "license": "MIT",
+  "repository": "https://github.com/capatinore/contextforge-mcp",
+  "tags": ["code-intelligence", "context-compression", "mcp", "tokens"],
+  "effect": "Read+Write",
+  "commands": [
+    { "name": "cf-index", "description": "Index codebase before implementing" },
+    { "name": "cf-analyze", "description": "Analyze codebase and compress spec before planning" },
+    { "name": "cf-implement", "description": "Graph-aware implement command" },
+    { "name": "cf-stats", "description": "Show token savings for this session" }
+  ]
+}
