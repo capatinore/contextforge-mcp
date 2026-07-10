@@ -33,7 +33,7 @@ class TestToolsRegistered:
     def test_total_tool_count(self):
         from contextforge_mcp import server as srv
         count = len(srv.mcp._tool_manager._tools)
-        assert count == 10  # 2 compress + 2 stats + 6 speckit
+        assert count == 11  # 2 compress + 2 stats + 6 speckit
 
     def test_no_cbm_proxy_tools(self):
         from contextforge_mcp import server as srv
